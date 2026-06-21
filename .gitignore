@@ -1,0 +1,13 @@
+# Environment
+venv/
+
+# Sensitive config
+config.py
+
+# Auto-generated outputs
+smart_grid.log
+smart_grid_report.csv
+
+# Python cache
+__pycache__/
+*.pyc
