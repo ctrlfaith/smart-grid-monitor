@@ -1,8 +1,9 @@
 import logging
 from datetime import datetime
-from config import THRESHOLDS
+from config import THRESHOLDS, CB_THRESHOLDS
 from simulator import generate_sensor_data
 from alert import send_alert
+from detector import detect as adaptive_detect
 
 logging.basicConfig(
     filename="smart_grid.log",
@@ -39,22 +40,33 @@ def _check_device(device: dict) -> dict:
     reasons: list[str] = []
     severities: list[str] = []
 
+    # Select threshold set based on device type.
+    # Circuit Breakers use CB_THRESHOLDS (lower max temp); all others use THRESHOLDS.
+    thresholds = CB_THRESHOLDS if device.get("type") == "Circuit Breaker" else THRESHOLDS
+
     if status == "offline":
         return {**device, "severity": "CRITICAL", "reasons": ["OFFLINE"]}
 
     if temp is None or voltage is None:
         return {**device, "severity": "ERROR", "reasons": ["MISSING DATA"]}
 
-    if temp > THRESHOLDS["MAX_TEMP_CELSIUS"]:
+    if temp > thresholds["MAX_TEMP_CELSIUS"]:
         reasons.append("OVERHEAT")
         severities.append("WARNING")
 
-    if voltage < THRESHOLDS["MIN_VOLTAGE_V"]:
+    if voltage < thresholds["MIN_VOLTAGE_V"]:
         reasons.append("BROWNOUT")
         severities.append("WARNING")
 
     if not reasons and _detect_trend(device_id, temp):
         reasons.append("TEMP RISING TREND")
+        severities.append("PRE-WARNING")
+
+    # Adaptive detection always updates baseline.
+    # Flags anomaly only when no fixed-threshold alert exists (PRE-WARNING level).
+    adaptive_reasons = adaptive_detect(device_id, temp, voltage)
+    if not reasons and adaptive_reasons:
+        reasons.extend(adaptive_reasons)
         severities.append("PRE-WARNING")
 
     if not reasons:

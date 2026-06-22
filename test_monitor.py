@@ -106,5 +106,34 @@ class TestAnomalyDetection(unittest.TestCase):
         self.assertNotIn("TEMP RISING TREND", result["reasons"])
 
 
+    # TC-015: Circuit Breaker — normal values within CB threshold
+    def test_cb_normal(self):
+        device = {
+            "id": "CB-TEST",
+            "type": "Circuit Breaker",
+            "location": "Test Panel",
+            "temperature": 55.0,
+            "voltage": 220.0,
+            "status": "online",
+        }
+        result = _check_device(device)
+        self.assertEqual(result["severity"], "INFO")
+        self.assertEqual(result["reasons"], ["NORMAL"])
+
+    # TC-016: Circuit Breaker — temperature exceeds CB threshold (65°C) but below Transformer threshold (75°C)
+    def test_cb_overheat(self):
+        device = {
+            "id": "CB-TEST",
+            "type": "Circuit Breaker",
+            "location": "Test Panel",
+            "temperature": 68.0,
+            "voltage": 220.0,
+            "status": "online",
+        }
+        result = _check_device(device)
+        self.assertEqual(result["severity"], "WARNING")
+        self.assertIn("OVERHEAT", result["reasons"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

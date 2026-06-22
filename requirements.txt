@@ -1,2 +1,6 @@
 # Python 3.10+
 requests==2.33.1
+streamlit
+pandas
+altair
+pytest
